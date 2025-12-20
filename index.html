@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- SEO対策 -->
+    <title>マイクラ統合版コマンド生成ツール | Switch/スマホ対応チートシート</title>
+    <meta name="description" content="Switchやスマホで使いやすい、Minecraft統合版（BE/Bedrock）のコマンド入力補助ツール。/give, /tp, /fill, /effectなどのコマンドを日本語で検索・作成できます。ID一覧付き。">
+    <meta name="keywords" content="マイクラ,コマンド,統合版,Switch,スイッチ,PE,BE,チート,一覧,ツール,生成,ID">
+    
+    <!-- OGP (SNSシェア用) -->
+    <meta property="og:title" content="マイクラ統合版コマンド生成ツール">
+    <meta property="og:description" content="Switchでコマンド入力が面倒？このツールならタップだけでコマンドが作れます。">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://your-website-url.com">
+    <meta property="og:image" content="https://placehold.co/1200x630/1e1e1e/3C8527?text=BEDROCK+CMD+TOOL">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons (CDN) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+        body {
+            background-color: #1e1e1e;
+            color: #f3f4f6;
+            font-family: sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body class="selection:bg-[#3C8527] selection:text-white pb-24">
+
+    <!-- アプリケーション構造 -->
+    <div id="app" class="max-w-3xl mx-auto">
+        
+        <!-- Header -->
+        <header class="bg-[#2a2a2a] border-b-4 border-[#151515] p-3 sticky top-0 z-50 shadow-lg mb-4">
+            <nav class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-[#3C8527] flex items-center justify-center border-2 border-white shadow-sm shrink-0 rounded-sm">
+                        <i data-lucide="terminal" class="text-white w-6 h-6"></i>
+                    </div>
+                    <h1 class="text-xl font-bold tracking-tight text-white leading-none">
+                        BEDROCK <br/><span class="text-[#51cf38]">CMD TOOL</span>
+                    </h1>
+                </div>
+                <div class="text-[10px] text-gray-400 bg-[#151515] px-2 py-1 rounded border border-[#333]">
+                    Switch Optimized
+                </div>
+            </nav>
+        </header>
+
+        <main class="p-3 space-y-6">
+            <!-- Builder Section -->
+            <section id="builder-area" class="min-h-[100px] transition-all duration-300">
+                <!-- JSでここにビルダーを描画 -->
+            </section>
+
+            <!-- Search & List Section -->
+            <section class="space-y-4">
+                <div class="relative sticky top-[76px] z-40 shadow-lg bg-[#1e1e1e] pt-2 pb-1 rounded-b-lg">
+                    <div class="relative mb-3">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i data-lucide="search" class="h-5 w-5 text-gray-400"></i>
+                        </div>
+                        <input
+                            type="text"
+                            class="block w-full pl-10 pr-3 py-4 border-2 border-[#444] rounded-lg leading-5 bg-[#252525] text-gray-100 placeholder-gray-500 focus:outline-none focus:bg-[#1a1a1a] focus:border-[#3C8527] transition duration-150 ease-in-out shadow-sm"
+                            placeholder="コマンドを検索 (例: 天気, アイテム)..."
+                            id="search-input"
+                        />
+                    </div>
+                    <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-2 px-2" id="category-tabs">
+                        <!-- JSでタブを描画 -->
+                    </div>
+                </div>
+
+                <div id="command-list" class="grid gap-3 pb-20">
+                    <!-- JSでリストを描画 -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // --- 1. データ定義 ---
+        const SELECTORS = [
+            { label: '@s (自分)', value: '@s' },
+            { label: '@p (最寄り)', value: '@p' },
+            { label: '@a (全員)', value: '@a' },
+            { label: '@e (全ｴﾝﾃｨﾃｨ)', value: '@e' },
+            { label: '@r (ランダム)', value: '@r' },
+        ];
+        const COORDS_PRESETS = [
+            { label: '~ ~ ~ (現在地)', value: '~ ~ ~' },
+            { label: '足元 (~ ~-1 ~)', value: '~ ~-1 ~' },
+            { label: '目の前 (^ ^ ^5)', value: '^ ^ ^5' },
+            { label: '原点 (0 -60 0)', value: '0 -60 0' },
+        ];
+        const BOOLEAN_OPTS = [
+            { label: '有効 (true)', value: 'true' },
+            { label: '無効 (false)', value: 'false' },
+        ];
+        const BLOCK_PRESETS = {
+            basic: [
+                { label: '石', value: 'stone' }, { label: '草', value: 'grass' }, { label: '土', value: 'dirt' }, { label: '丸石', value: 'cobblestone' }, { label: '板材', value: 'planks' }, { label: '原木', value: 'log' }, { label: '羊毛', value: 'wool' },
+            ],
+            equipment: [
+                { label: 'ダイヤ剣', value: 'diamond_sword' }, { label: 'ネザ剣', value: 'netherite_sword' }, { label: '弓', value: 'bow' }, { label: 'クロスボウ', value: 'crossbow' }, { label: 'トライデント', value: 'trident' }, { label: '盾', value: 'shield' }, { label: 'エリトラ', value: 'elytra' }, { label: 'ダイヤツルハシ', value: 'diamond_pickaxe' },
+            ],
+            armor: [
+                { label: 'ダイヤ兜', value: 'diamond_helmet' }, { label: 'ダイヤ胸', value: 'diamond_chestplate' }, { label: 'ダイヤ脚', value: 'diamond_leggings' }, { label: 'ダイヤ靴', value: 'diamond_boots' }, { label: 'ネザ胸', value: 'netherite_chestplate' },
+            ],
+            food: [
+                { label: 'ステーキ', value: 'cooked_beef' }, { label: '金リンゴ', value: 'golden_apple' }, { label: 'エンチャ金林檎', value: 'enchanted_golden_apple' }, { label: 'パン', value: 'bread' }, { label: '金ニンジン', value: 'golden_carrot' },
+            ],
+            building: [
+                { label: 'ガラス', value: 'glass' }, { label: 'コンクリ', value: 'concrete' }, { label: 'クォーツ', value: 'quartz_block' }, { label: 'レンガ', value: 'brick_block' }, { label: 'シーランタン', value: 'sea_lantern' }, { label: 'エンドロッド', value: 'end_rod' }, { label: '本棚', value: 'bookshelf' },
+            ],
+            utility: [
+                { label: 'チェスト', value: 'chest' }, { label: '作業台', value: 'crafting_table' }, { label: 'かまど', value: 'furnace' }, { label: 'ベッド', value: 'bed' }, { label: 'たいまつ', value: 'torch' }, { label: 'エンダーチェスト', value: 'ender_chest' }, { label: '金床', value: 'anvil' }, { label: 'シュルカー箱', value: 'shulker_box' },
+            ],
+            redstone: [
+                { label: 'RSブロック', value: 'redstone_block' }, { label: 'ランプ', value: 'redstone_lamp' }, { label: 'ピストン', value: 'piston' }, { label: '粘着ピストン', value: 'sticky_piston' }, { label: '観察者', value: 'observer' }, { label: 'ホッパー', value: 'hopper' }, { label: '発射装置', value: 'dispenser' }, { label: 'TNT', value: 'tnt' },
+            ],
+            special: [
+                { label: 'バリア', value: 'barrier' }, { label: 'コマブロ', value: 'command_block' }, { label: 'ストラクチャ', value: 'structure_block' }, { label: 'ライト', value: 'light_block' }, { label: '空気', value: 'air' }, { label: 'ビーコン', value: 'beacon' }, { label: 'エンドクリスタル', value: 'end_crystal' }, { label: '不死のトーテム', value: 'totem_of_undying' },
+            ]
+        };
+
+        const COMMANDS_DATA = [
+            // --- Basic ---
+            {
+                id: 'gamemode', name: '/gamemode', description: 'ゲームモードを変更', category: 'basic',
+                args: [
+                    { key: 'mode', label: 'モード', type: 'select', options: [{ label: 'クリエイティブ (c)', value: 'c' }, { label: 'サバイバル (s)', value: 's' }, { label: 'アドベンチャー (a)', value: 'a' }, { label: 'スペクテイター (spectator)', value: 'spectator' }] },
+                    { key: 'target', label: 'ターゲット', type: 'selector', optional: true }
+                ]
+            },
+            {
+                id: 'time', name: '/time set', description: '時間を変更', category: 'basic',
+                args: [
+                    { key: 'time', label: '時間帯', type: 'select', options: [{ label: '昼 (day)', value: 'day' }, { label: '夜 (night)', value: 'night' }, { label: '正午 (noon)', value: 'noon' }, { label: '真夜中 (midnight)', value: 'midnight' }, { label: '日の出 (sunrise)', value: 'sunrise' }, { label: '日没 (sunset)', value: 'sunset' }] }
+                ]
+            },
+            {
+                id: 'weather', name: '/weather', description: '天候を変更', category: 'basic',
+                args: [
+                    { key: 'type', label: '天気', type: 'select', options: [{ label: '晴れ (clear)', value: 'clear' }, { label: '雨 (rain)', value: 'rain' }, { label: '雷雨 (thunder)', value: 'thunder' }] },
+                    { key: 'duration', label: '持続時間(秒)', type: 'int', optional: true, placeholder: '例: 600' }
+                ]
+            },
+            {
+                id: 'difficulty', name: '/difficulty', description: '難易度を変更', category: 'basic',
+                args: [
+                    { key: 'difficulty', label: '難易度', type: 'select', options: [{ label: 'ピースフル (p)', value: 'p' }, { label: 'イージー (e)', value: 'e' }, { label: 'ノーマル (n)', value: 'n' }, { label: 'ハード (h)', value: 'h' }] }
+                ]
+            },
+            {
+                id: 'gamerule', name: '/gamerule', description: 'ゲームルール設定', category: 'basic',
+                args: [
+                    {
+                        key: 'rule', label: 'ルール名', type: 'select',
+                        options: [
+                            { label: '座標表示 (showcoordinates)', value: 'showcoordinates' }, { label: '天候変化 (doweathercycle)', value: 'doweathercycle' }, { label: '日光サイクル (dodaylightcycle)', value: 'dodaylightcycle' }, { label: 'Mob発生 (domobspawning)', value: 'domobspawning' }, { label: 'Mobアイテムドロップ (domobloot)', value: 'domobloot' }, { label: '即時リスポーン (doimmediaterespawn)', value: 'doimmediaterespawn' }, { label: 'コマンドブロック有効 (commandblocksenabled)', value: 'commandblocksenabled' }, { label: '持ち物保持 (keepinventory)', value: 'keepinventory' }, { label: 'TNT爆発 (tntexplodes)', value: 'tntexplodes' }, { label: '火の延焼 (dofiretick)', value: 'dofiretick' }, { label: 'PvP許可 (pvp)', value: 'pvp' }, { label: '落下ダメージ (falldamage)', value: 'falldamage' },
+                        ]
+                    },
+                    { key: 'value', label: '設定値', type: 'boolean' }
+                ]
+            },
+            // --- Cheat / Items ---
+            {
+                id: 'give', name: '/give', description: 'アイテムを付与', category: 'cheat',
+                args: [
+                    { key: 'target', label: 'ターゲット', type: 'selector' },
+                    { key: 'item', label: 'アイテム/ブロック', type: 'block', placeholder: 'apple' },
+                    { key: 'amount', label: '個数', type: 'int', optional: true, defaultValue: '1' },
+                    { key: 'data', label: 'データ値', type: 'int', optional: true, defaultValue: '0' }
+                ]
+            },
+            {
+                id: 'clear', name: '/clear', description: 'アイテムを消去', category: 'cheat',
+                args: [
+                    { key: 'target', label: 'ターゲット', type: 'selector', optional: true },
+                    { key: 'item', label: '特定アイテム(任意)', type: 'block', optional: true, placeholder: '空欄で全消去' },
+                    { key: 'data', label: 'データ値', type: 'int', optional: true },
+                    { key: 'maxCount', label: '最大個数', type: 'int', optional: true }
+                ]
+            },
+            {
+                id: 'enchant', name: '/enchant', description: 'エンチャント付与', category: 'cheat',
+                args: [
+                    { key: 'target', label: 'ターゲット', type: 'selector' },
+                    {
+                        key: 'enchantment', label: 'エンチャントID', type: 'select',
+                        options: [
+                            { label: '鋭さ (sharpness)', value: 'sharpness' }, { label: '聖なる力 (smite)', value: 'smite' }, { label: '虫特効 (bane_of_arthropods)', value: 'bane_of_arthropods' }, { label: '効率 (efficiency)', value: 'efficiency' }, { label: '幸運 (fortune)', value: 'fortune' }, { label: 'シルクタッチ (silk_touch)', value: 'silk_touch' }, { label: '耐久力 (unbreaking)', value: 'unbreaking' }, { label: '修繕 (mending)', value: 'mending' }, { label: '防護 (protection)', value: 'protection' }, { label: '火炎耐性 (fire_protection)', value: 'fire_protection' }, { label: '爆発耐性 (blast_protection)', value: 'blast_protection' }, { label: '落下耐性 (feather_falling)', value: 'feather_falling' }, { label: 'パワー (power)', value: 'power' }, { label: 'パンチ (punch)', value: 'punch' }, { label: 'フレイム (flame)', value: 'flame' }, { label: '無限 (infinity)', value: 'infinity' }, { label: 'ドロップ増加 (looting)', value: 'looting' }, { label: '忠誠 (loyalty)', value: 'loyalty' }, { label: '激流 (riptide)', value: 'riptide' }, { label: '召雷 (channeling)', value: 'channeling' },
+                        ]
+                    },
+                    { key: 'level', label: 'レベル', type: 'int', optional: true, placeholder: '1' }
+                ]
+            },
+            {
+                id: 'effect', name: '/effect', description: 'ポーション効果', category: 'cheat',
+                args: [
+                    { key: 'target', label: 'ターゲット', type: 'selector' },
+                    {
+                        key: 'effect', label: '効果名', type: 'select',
+                        options: [
+                            { label: '全解除 (clear)', value: 'clear' }, { label: 'スピード (speed)', value: 'speed' }, { label: '遅鈍 (slowness)', value: 'slowness' }, { label: '急ぐ (haste)', value: 'haste' }, { label: '採掘速度低下 (mining_fatigue)', value: 'mining_fatigue' }, { label: '攻撃力上昇 (strength)', value: 'strength' }, { label: '即時回復 (instant_health)', value: 'instant_health' }, { label: '即時ダメージ (instant_damage)', value: 'instant_damage' }, { label: '跳躍力上昇 (jump_boost)', value: 'jump_boost' }, { label: '吐き気 (nausea)', value: 'nausea' }, { label: '再生 (regeneration)', value: 'regeneration' }, { label: '耐性 (resistance)', value: 'resistance' }, { label: '火炎耐性 (fire_resistance)', value: 'fire_resistance' }, { label: '水中呼吸 (water_breathing)', value: 'water_breathing' }, { label: '透明化 (invisibility)', value: 'invisibility' }, { label: '盲目 (blindness)', value: 'blindness' }, { label: '暗視 (night_vision)', value: 'night_vision' }, { label: '空腹 (hunger)', value: 'hunger' }, { label: '弱体化 (weakness)', value: 'weakness' }, { label: '毒 (poison)', value: 'poison' }, { label: 'ウィザー (wither)', value: 'wither' }, { label: '体力増強 (health_boost)', value: 'health_boost' }, { label: '衝撃吸収 (absorption)', value: 'absorption' }, { label: '飽和 (saturation)', value: 'saturation' }, { label: '浮遊 (levitation)', value: 'levitation' }, { label: 'コンジットパワー (conduit_power)', value: 'conduit_power' }, { label: '低速落下 (slow_falling)', value: 'slow_falling' }, { label: '不吉な予感 (bad_omen)', value: 'bad_omen' }, { label: '村の英雄 (village_hero)', value: 'village_hero' },
+                        ]
+                    },
+                    { key: 'seconds', label: '秒数', type: 'int', optional: true, placeholder: '30' },
+                    { key: 'amplifier', label: '強さ(0-255)', type: 'int', optional: true, placeholder: '0' },
+                    { key: 'hideParticles', label: '粒子を隠す', type: 'boolean', optional: true }
+                ]
+            },
+            {
+                id: 'xp', name: '/xp', description: '経験値を付与', category: 'cheat',
+                args: [
+                    { key: 'amount', label: '量', type: 'int', placeholder: '100' },
+                    { key: 'type', label: '単位', type: 'select', options: [{ label: 'ポイント', value: '' }, { label: 'レベル (L)', value: 'L' }] },
+                    { key: 'player', label: 'プレイヤー', type: 'selector', optional: true }
+                ]
+            },
+            {
+                id: 'kill', name: '/kill', description: 'エンティティを消去', category: 'cheat',
+                args: [{ key: 'target', label: 'ターゲット', type: 'selector' }]
+            },
+            {
+                id: 'summon', name: '/summon', description: 'エンティティを召喚', category: 'cheat',
+                args: [
+                    { key: 'entity', label: 'エンティティ名', type: 'text', placeholder: 'zombie' },
+                    { key: 'coords', label: '座標', type: 'coords', optional: true },
+                    { key: 'event', label: 'イベント', type: 'text', optional: true, placeholder: 'minecraft:...' }
+                ]
+            },
+            // --- Build ---
+            {
+                id: 'fill', name: '/fill', description: '範囲をブロックで埋める', category: 'build',
+                args: [
+                    { key: 'from', label: '始点座標', type: 'coords' },
+                    { key: 'to', label: '終点座標', type: 'coords' },
+                    { key: 'block', label: 'ブロック名', type: 'block', placeholder: 'stone' },
+                    { key: 'data', label: 'データ値', type: 'int', optional: true },
+                    {
+                        key: 'mode', label: '処理モード', type: 'select', optional: true,
+                        options: [{ label: '置換 (replace)', value: 'replace' }, { label: '破壊 (destroy)', value: 'destroy' }, { label: '維持 (keep)', value: 'keep' }, { label: '中空 (hollow)', value: 'hollow' }, { label: '外枠 (outline)', value: 'outline' }]
+                    }
+                ]
+            },
+            {
+                id: 'setblock', name: '/setblock', description: 'ブロックを1つ設置', category: 'build',
+                args: [
+                    { key: 'coords', label: '座標', type: 'coords' },
+                    { key: 'block', label: 'ブロック名', type: 'block', placeholder: 'dirt' },
+                    { key: 'data', label: 'データ値', type: 'int', optional: true },
+                    {
+                        key: 'mode', label: '処理モード', type: 'select', optional: true,
+                        options: [{ label: '置換 (replace)', value: 'replace' }, { label: '破壊 (destroy)', value: 'destroy' }, { label: '維持 (keep)', value: 'keep' }]
+                    }
+                ]
+            },
+            {
+                id: 'clone', name: '/clone', description: '領域をコピー', category: 'build',
+                args: [
+                    { key: 'begin', label: '始点座標', type: 'coords' },
+                    { key: 'end', label: '終点座標', type: 'coords' },
+                    { key: 'dest', label: '貼り付け先', type: 'coords' },
+                    { key: 'mask', label: 'マスク設定', type: 'select', optional: true, options: [{ label: '置換 (replace)', value: 'replace' }, { label: 'マスク (masked)', value: 'masked' }, { label: 'フィルタ (filtered)', value: 'filtered' }] },
+                    { key: 'mode', label: '移動設定', type: 'select', optional: true, options: [{ label: '通常 (normal)', value: 'normal' }, { label: '移動 (move)', value: 'move' }, { label: '強制 (force)', value: 'force' }] }
+                ]
+            },
+            // --- Teleport / Move ---
+            {
+                id: 'tp', name: '/tp', description: 'テレポート', category: 'teleport',
+                args: [
+                    { key: 'target', label: '誰を', type: 'selector' },
+                    { key: 'destination', label: 'どこへ (座標/対象)', type: 'coords' }
+                ]
+            },
+            {
+                id: 'spawnpoint', name: '/spawnpoint', description: 'スポーン地点を設定', category: 'teleport',
+                args: [
+                    { key: 'target', label: 'ターゲット', type: 'selector', optional: true },
+                    { key: 'coords', label: '座標', type: 'coords', optional: true }
+                ]
+            },
+            {
+                id: 'locate', name: '/locate', description: '構造物/バイオームを探す', category: 'teleport',
+                args: [
+                    { key: 'category', label: 'カテゴリ', type: 'select', options: [{ label: '構造物 (structure)', value: 'structure' }, { label: 'バイオーム (biome)', value: 'biome' }] },
+                    { key: 'thing', label: '名前', type: 'text', placeholder: 'village / plains' }
+                ]
+            },
+            // --- Other ---
+            {
+                id: 'title', name: '/title', description: '画面にタイトルを表示', category: 'other',
+                args: [
+                    { key: 'target', label: 'ターゲット', type: 'selector' },
+                    { key: 'type', label: '表示位置', type: 'select', options: [{ label: 'タイトル (title)', value: 'title' }, { label: 'サブタイトル (subtitle)', value: 'subtitle' }, { label: 'アクションバー (actionbar)', value: 'actionbar' }] },
+                    { key: 'text', label: 'メッセージ', type: 'text', placeholder: 'Hello World' }
+                ]
+            },
+            {
+                id: 'tag', name: '/tag', description: 'タグを操作', category: 'other',
+                args: [
+                    { key: 'target', label: 'ターゲット', type: 'selector' },
+                    { key: 'action', label: 'アクション', type: 'select', options: [{ label: '追加 (add)', value: 'add' }, { label: '削除 (remove)', value: 'remove' }, { label: '一覧 (list)', value: 'list' }] },
+                    { key: 'tagName', label: 'タグ名', type: 'text', optional: true, placeholder: 'admin' }
+                ]
+            },
+            {
+                id: 'msg', name: '/msg', description: '個別メッセージ送信', category: 'other',
+                args: [
+                    { key: 'target', label: 'ターゲット', type: 'selector' },
+                    { key: 'message', label: 'メッセージ', type: 'text', placeholder: 'こんにちは' }
+                ]
+            },
+        ];
+
+        // --- 2. アプリケーションロジック (Vanilla JS Optimized) ---
+
+        const app = {
+            state: {
+                activeCategory: 'all',
+                searchQuery: '',
+                selectedCommandId: null,
+                argsValues: {},
+                activeArgIndex: 0,
+                copied: false,
+                blockCategory: 'basic'
+            },
+
+            // 最後の更新状態を保持して、不要なレンダリングを防ぐ
+            lastRendered: {
+                commandId: null,
+                argIndex: null,
+                blockCategory: null
+            },
+            
+            // 検索デバウンス用タイマー
+            searchTimeout: null,
+
+            getSelectedCommand() {
+                return COMMANDS_DATA.find(cmd => cmd.id === this.state.selectedCommandId) || null;
+            },
+
+            // --- Initialization ---
+            init() {
+                this.updateTabs();
+                this.updateList();
+                this.updateBuilder();
+                
+                // 検索イベントリスナー (Debounce付き)
+                document.getElementById('search-input').addEventListener('input', (e) => {
+                    clearTimeout(this.searchTimeout);
+                    this.searchTimeout = setTimeout(() => {
+                        this.state.searchQuery = e.target.value;
+                        this.updateList();
+                    }, 300); // 300ms待ってから実行
+                });
+                
+                lucide.createIcons();
+            },
+
+            // --- State Management ---
+            setState(updates) {
+                const oldState = { ...this.state };
+                this.state = { ...this.state, ...updates };
+                
+                if (updates.activeCategory !== undefined) {
+                    this.updateTabs(); 
+                    this.updateList();
+                }
+                
+                // updateListは検索バーのイベントリスナーで別途制御しているのでここではsearchQueryは除外してもよいが、
+                // 他の要因で変わった場合のために一応残す（今回はイベント経由なので重複実行は防がれている）
+
+                if (updates.selectedCommandId !== undefined || 
+                    updates.argsValues !== undefined || 
+                    updates.activeArgIndex !== undefined || 
+                    updates.blockCategory !== undefined || 
+                    updates.copied !== undefined) {
+                    this.updateBuilder();
+                }
+            },
+
+            // --- Handlers ---
+            handleCommandSelect(commandId) {
+                // 強制リセット
+                this.lastRendered = { commandId: null, argIndex: null, blockCategory: null };
+                this.setState({
+                    selectedCommandId: commandId,
+                    argsValues: {},
+                    activeArgIndex: 0,
+                    copied: false
+                });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+
+            handleCategorySelect(categoryId) {
+                this.setState({ activeCategory: categoryId });
+            },
+
+            handleClearCommand() {
+                this.lastRendered = { commandId: null, argIndex: null, blockCategory: null };
+                this.setState({ selectedCommandId: null, argsValues: {} });
+            },
+
+            // テキスト入力のハンドリング（重要：再描画せずにDOMだけ更新する）
+            handleTextInput(key, value) {
+                // Stateを更新 (再描画はしない)
+                this.state.argsValues = { ...this.state.argsValues, [key]: value };
+                
+                // プレビューのDOMのみ更新
+                const cmd = this.getSelectedCommand();
+                if (cmd) {
+                    const argIndex = cmd.args.findIndex(a => a.key === key);
+                    if (argIndex !== -1) {
+                        const span = document.getElementById(`preview-arg-${argIndex}`);
+                        if (span) {
+                            span.innerText = value || key;
+                            // クラス操作 (値の有無でスタイル変更)
+                            if (value) {
+                                span.classList.add('bg-[#3C8527]', 'text-white', 'border-b-0');
+                                span.classList.remove('text-gray-600', 'border-dashed', 'text-white', 'border-b');
+                            } else {
+                                // アクティブだけど空の状態に戻す(本来はここに来ないが念の為)
+                            }
+                        }
+                    }
+                }
+            },
+
+            updateArgValue(key, value) {
+                const newArgs = { ...this.state.argsValues, [key]: value };
+                this.setState({ argsValues: newArgs });
+            },
+
+            nextArg() {
+                const cmd = this.getSelectedCommand();
+                if (cmd && this.state.activeArgIndex < cmd.args.length - 1) {
+                    this.setState({ activeArgIndex: this.state.activeArgIndex + 1 });
+                }
+            },
+
+            prevArg() {
+                if (this.state.activeArgIndex > 0) {
+                    this.setState({ activeArgIndex: this.state.activeArgIndex - 1 });
+                }
+            },
+
+            setAndNext(key, value) {
+                this.state.argsValues = { ...this.state.argsValues, [key]: value };
+                
+                // まず現在のビューを更新（選択状態の反映）
+                this.updateBuilder(true); 
+
+                // 少し待ってから次へ
+                setTimeout(() => {
+                    const cmd = this.getSelectedCommand();
+                    if (cmd && this.state.activeArgIndex < cmd.args.length - 1) {
+                        this.setState({ activeArgIndex: this.state.activeArgIndex + 1 });
+                    }
+                }, 150);
+            },
+
+            setBlockCategory(category) {
+                this.setState({ blockCategory: category });
+            },
+
+            copyToClipboard() {
+                const cmd = this.getSelectedCommand();
+                if (!cmd) return;
+                
+                let cmdStr = cmd.name;
+                cmd.args.forEach(arg => {
+                    const val = this.state.argsValues[arg.key];
+                    if (val) {
+                         if (cmd.id === 'xp' && arg.key === 'type' && val === 'L') {
+                             cmdStr += ` ${val}`;
+                        } else {
+                             cmdStr += ` ${val}`;
+                        }
+                    }
+                });
+
+                const textArea = document.createElement("textarea");
+                textArea.value = cmdStr;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    this.setState({ copied: true });
+                    setTimeout(() => this.setState({ copied: false }), 2000);
+                } catch (err) {
+                    console.error(err);
+                }
+                document.body.removeChild(textArea);
+            },
+
+            // --- Partial Render Functions ---
+
+            updateTabs() {
+                const cats = [
+                    { id: 'all', label: 'すべて', icon: 'list' },
+                    { id: 'basic', label: '基本', icon: 'terminal' },
+                    { id: 'cheat', label: 'チート', icon: 'zap' },
+                    { id: 'build', label: '建築', icon: 'box' },
+                    { id: 'teleport', label: '移動', icon: 'map-pin' },
+                    { id: 'other', label: 'その他', icon: 'grid' },
+                ];
+                
+                const html = cats.map(cat => `
+                    <button
+                        onclick="app.handleCategorySelect('${cat.id}')"
+                        class="flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-colors border ${
+                        this.state.activeCategory === cat.id 
+                            ? 'bg-[#3C8527] text-white border-[#3C8527] shadow-lg shadow-green-900/50' 
+                            : 'bg-[#2a2a2a] text-gray-400 border-[#444] hover:bg-[#333]'
+                        }">
+                        <i data-lucide="${cat.icon}" class="w-4 h-4"></i>
+                        <span class="text-sm font-medium">${cat.label}</span>
+                    </button>
+                `).join('');
+                
+                document.getElementById('category-tabs').innerHTML = html;
+                lucide.createIcons();
+            },
+
+            updateList() {
+                const filtered = COMMANDS_DATA.filter(cmd => {
+                    const matchesCategory = this.state.activeCategory === 'all' || cmd.category === this.state.activeCategory;
+                    const matchesSearch = cmd.name.toLowerCase().includes(this.state.searchQuery.toLowerCase()) || 
+                                          cmd.description.includes(this.state.searchQuery) ||
+                                          (cmd.name.replace('/', '')).includes(this.state.searchQuery);
+                    return matchesCategory && matchesSearch;
+                });
+
+                const html = filtered.length === 0 
+                    ? '<div class="text-center py-10 text-gray-500">コマンドが見つかりませんでした</div>'
+                    : filtered.map(cmd => {
+                        const isSelected = this.state.selectedCommandId === cmd.id;
+                        const syntax = cmd.name + ' ' + cmd.args.map(a => a.optional ? `[${a.key}]` : `<${a.key}>`).join(' ');
+                        return `
+                        <button
+                            onclick="app.handleCommandSelect('${cmd.id}')"
+                            class="text-left p-4 rounded-lg border-2 transition-all active:scale-[0.98] group w-full ${
+                            isSelected
+                                ? 'bg-[#2d3a2d] border-[#3C8527] ring-1 ring-[#3C8527]'
+                                : 'bg-[#2a2a2a] border-[#3a3a3a] hover:border-[#555]'
+                            }">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-mono text-lg font-bold text-[#51cf38] group-hover:text-white transition-colors">
+                                    ${cmd.name}
+                                </span>
+                                <i data-lucide="chevron-right" class="w-5 h-5 text-gray-600 transition-transform ${isSelected ? 'rotate-90 text-[#3C8527]' : ''}"></i>
+                            </div>
+                            <div class="text-sm text-gray-300 mb-2">${cmd.description}</div>
+                            <div class="text-xs font-mono text-gray-500 bg-[#151515] p-2 rounded inline-block border border-[#333]">
+                                ${syntax}
+                            </div>
+                        </button>`;
+                    }).join('');
+                
+                document.getElementById('command-list').innerHTML = html;
+                lucide.createIcons();
+            },
+
+            updateBuilder(forceUpdate = false) {
+                const cmd = this.getSelectedCommand();
+                const container = document.getElementById('builder-area');
+
+                if (!cmd) {
+                    if (this.lastRendered.commandId !== null) { // 変更があった場合のみ書き換え
+                        container.innerHTML = `
+                        <div class="bg-[#2a2a2a] border-2 border-dashed border-[#444] rounded-lg p-8 text-center text-gray-500">
+                            <i data-lucide="terminal" class="w-12 h-12 mx-auto mb-3 opacity-20"></i>
+                            <p>下のリストからコマンドを選択してください</p>
+                        </div>`;
+                        lucide.createIcons();
+                        this.lastRendered = { commandId: null, argIndex: null, blockCategory: null };
+                    }
+                    return;
+                }
+
+                // 最適化: コマンド、引数インデックス、ブロックカテゴリが変わっていない場合は、HTML全書き換えをスキップしたい
+                // ただし、argsValuesの変更によるプレビュー更新や、コピーボタンの状態変化は反映したい。
+                // テキスト入力以外の値変更（ボタン選択）は強制更新(forceUpdate)される。
+                const shouldFullRender = forceUpdate || 
+                                       this.state.copied || 
+                                       cmd.id !== this.lastRendered.commandId || 
+                                       this.state.activeArgIndex !== this.lastRendered.argIndex ||
+                                       this.state.blockCategory !== this.lastRendered.blockCategory;
+
+                if (!shouldFullRender) {
+                    // 全書き換え不要の場合でも、プレビューエリアのクラス更新などは必要かもしれないが、
+                    // テキスト入力(handleTextInput)とボタン選択(setAndNext->forceUpdate)でカバーされているため、
+                    // ここでは何もしなくて良い。
+                    return;
+                }
+
+                this.lastRendered = { 
+                    commandId: cmd.id, 
+                    argIndex: this.state.activeArgIndex, 
+                    blockCategory: this.state.blockCategory 
+                };
+
+                const activeArg = cmd.args[this.state.activeArgIndex];
+                
+                // プレビュー生成
+                const previewSpans = cmd.args.map((arg, idx) => {
+                    const isActive = idx === this.state.activeArgIndex;
+                    const hasValue = !!this.state.argsValues[arg.key];
+                    const val = this.state.argsValues[arg.key] || arg.key;
+                    // スタイル決定
+                    let classes = "mx-1 px-1 rounded cursor-pointer transition-colors inline-block ";
+                    if (isActive) {
+                        classes += "bg-[#3C8527] text-white ring-2 ring-white/50";
+                    } else if (hasValue) {
+                        classes += "text-white border-b border-gray-600";
+                    } else {
+                        classes += "text-gray-600 border border-dashed border-gray-700";
+                    }
+
+                    return `<span 
+                        id="preview-arg-${idx}"
+                        onclick="app.setState({ activeArgIndex: ${idx} })"
+                        class="${classes}">${val}</span>`;
+                }).join('');
+
+                container.innerHTML = `
+                <div class="bg-[#2a2a2a] border-2 border-[#585858] rounded-lg overflow-hidden shadow-xl ring-4 ring-[#151515] animate-fade-in">
+                    <!-- Toolbar -->
+                    <div class="bg-[#353535] px-3 py-2 border-b border-[#585858] flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[#51cf38] font-bold font-mono">${cmd.name}</span>
+                            <span class="text-xs text-gray-400 truncate max-w-[150px]">${cmd.description}</span>
+                        </div>
+                        <button onclick="app.handleClearCommand()" class="text-gray-400 hover:text-white p-1">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <!-- Preview -->
+                    <div class="p-4 bg-[#151515] border-b border-[#333]">
+                        <div class="font-mono text-lg break-all leading-relaxed">
+                            <span class="text-[#51cf38] font-bold">${cmd.name}</span>
+                            ${previewSpans}
+                        </div>
+                    </div>
+
+                    <!-- Copy Button -->
+                    <div class="px-4 py-2 bg-[#1a1a1a] flex justify-end border-b border-[#333]">
+                        <button 
+                            onclick="app.copyToClipboard()"
+                            class="flex items-center gap-2 px-6 py-2 rounded font-bold transition-all active:scale-95 ${
+                            this.state.copied 
+                                ? 'bg-white text-[#3C8527]' 
+                                : 'bg-[#51cf38] text-[#1a1a1a] hover:bg-[#61df48]'
+                            }">
+                            ${this.state.copied 
+                                ? '<i data-lucide="check" class="w-5 h-5"></i> COPIED!' 
+                                : '<i data-lucide="copy" class="w-5 h-5"></i> COPY COMMAND'}
+                        </button>
+                    </div>
+
+                    <!-- Input Wizard -->
+                    <div class="p-4 bg-[#222]">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-sm font-bold text-gray-300 uppercase flex items-center gap-2">
+                                <i data-lucide="edit-3" class="w-4 h-4 text-[#51cf38]"></i>
+                                SET: <span class="text-white bg-[#333] px-2 py-0.5 rounded ml-1">
+                                    ${activeArg ? activeArg.label : '完了'}
+                                </span>
+                            </h3>
+                            <div class="flex gap-2">
+                                <button onclick="app.prevArg()" ${this.state.activeArgIndex === 0 ? 'disabled' : ''} class="p-2 rounded bg-[#333] disabled:opacity-30 text-white">←</button>
+                                <button onclick="app.nextArg()" ${this.state.activeArgIndex === cmd.args.length - 1 ? 'disabled' : ''} class="p-2 rounded bg-[#333] disabled:opacity-30 text-white">→</button>
+                            </div>
+                        </div>
+
+                        <div class="min-h-[150px]">
+                            ${activeArg ? this.renderInputControl(activeArg) : `
+                                <div class="flex flex-col items-center justify-center h-full text-gray-500 py-4">
+                                    <i data-lucide="check" class="w-12 h-12 mb-2 text-[#3C8527]"></i>
+                                    <p>設定完了！コピーして使用してください。</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>`;
+                lucide.createIcons();
+
+                // テキスト入力の場合、初期フォーカスを設定（値が空の時のみ）
+                const txtInput = container.querySelector('input[type="text"]');
+                const argVal = activeArg ? this.state.argsValues[activeArg.key] : null;
+                if(txtInput && !argVal && document.activeElement !== txtInput) { 
+                     txtInput.focus();
+                }
+            },
+
+            renderInputControl(arg) {
+                const val = this.state.argsValues[arg.key] || '';
+                const optionalMsg = arg.optional ? '<div class="mb-2 text-xs text-yellow-500/80 flex items-center gap-1">* これは省略可能です。次へ進むとスキップされます。</div>' : '';
+
+                let controlHtml = '';
+
+                switch(arg.type) {
+                    case 'select':
+                    case 'boolean':
+                        const opts = arg.type === 'boolean' ? BOOLEAN_OPTS : arg.options;
+                        controlHtml = `<div class="grid grid-cols-2 gap-2">
+                            ${opts.map(opt => `
+                                <button
+                                    onclick="app.setAndNext('${arg.key}', '${opt.value}')"
+                                    class="p-3 rounded text-sm font-medium transition-all text-left border-l-4 ${
+                                    val === opt.value
+                                        ? 'bg-[#2d3a2d] border-[#3C8527] text-white'
+                                        : 'bg-[#3a3a3a] border-transparent text-gray-300 hover:bg-[#4a4a4a]'
+                                    }">
+                                    <div class="font-bold">${opt.label.split(' (')[0]}</div>
+                                    <div class="text-xs text-gray-500 font-mono">${opt.value}</div>
+                                </button>
+                            `).join('')}
+                        </div>`;
+                        break;
+
+                    case 'selector':
+                        controlHtml = `<div class="grid grid-cols-3 gap-2">
+                            ${SELECTORS.map(sel => `
+                                <button
+                                    onclick="app.setAndNext('${arg.key}', '${sel.value}')"
+                                    class="p-3 rounded text-center transition-all border-b-4 active:border-b-0 active:translate-y-1 ${
+                                        val === sel.value
+                                        ? 'bg-[#3C8527] border-[#2a611b] text-white'
+                                        : 'bg-[#3a3a3a] border-[#252525] text-[#51cf38] hover:bg-[#4a4a4a]'
+                                    }">
+                                    <div class="text-lg font-bold font-mono">${sel.value}</div>
+                                    <div class="text-[10px] text-gray-400">${sel.label.split(' (')[0]}</div>
+                                </button>
+                            `).join('')}
+                            <div class="col-span-3 mt-2">
+                                <input type="text" value="${val}" oninput="app.handleTextInput('${arg.key}', this.value)" placeholder="またはプレイヤー名を直接入力" class="w-full bg-[#151515] border border-[#444] p-3 rounded text-white focus:border-[#3C8527] outline-none" />
+                            </div>
+                        </div>`;
+                        break;
+
+                    case 'coords':
+                        controlHtml = `<div class="space-y-3">
+                            <div class="grid grid-cols-2 gap-2">
+                                ${COORDS_PRESETS.map(preset => `
+                                    <button
+                                        onclick="app.setAndNext('${arg.key}', '${preset.value}')"
+                                        class="p-3 rounded text-center border-b-4 active:border-b-0 active:translate-y-1 ${
+                                            val === preset.value
+                                            ? 'bg-[#d97706] border-[#92400e] text-white'
+                                            : 'bg-[#3a3a3a] border-[#252525] text-orange-200 hover:bg-[#4a4a4a]'
+                                        }">
+                                        <div class="font-mono font-bold text-sm">${preset.value}</div>
+                                        <div class="text-[10px] text-gray-400">${preset.label.split(' (')[0]}</div>
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <input type="text" value="${val}" oninput="app.handleTextInput('${arg.key}', this.value)" placeholder="例: 100 64 -100" class="w-full bg-[#151515] border border-[#444] p-3 rounded text-white font-mono focus:border-[#d97706] outline-none" />
+                        </div>`;
+                        break;
+
+                    case 'block':
+                        controlHtml = `<div class="space-y-3">
+                            <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                ${Object.keys(BLOCK_PRESETS).map(cat => `
+                                    <button 
+                                        onclick="app.setBlockCategory('${cat}')"
+                                        class="text-xs px-3 py-1 rounded-full whitespace-nowrap border ${
+                                            this.state.blockCategory === cat 
+                                            ? 'bg-[#51cf38] text-black border-[#51cf38] font-bold'
+                                            : 'bg-[#222] text-gray-400 border-[#444]'
+                                        }">
+                                        ${cat === 'basic' ? '基本' : cat === 'equipment' ? '装備' : cat === 'armor' ? '防具' : cat === 'food' ? '食料' : cat === 'building' ? '建築' : cat === 'utility' ? '機能' : cat === 'redstone' ? '回路' : '特殊'}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                ${BLOCK_PRESETS[this.state.blockCategory].map(block => `
+                                    <button
+                                        onclick="app.setAndNext('${arg.key}', '${block.value}')"
+                                        class="p-2 rounded flex flex-col items-center justify-center border transition-all hover:bg-[#444] ${
+                                            val === block.value
+                                            ? 'bg-[#333] border-[#51cf38] text-[#51cf38]'
+                                            : 'bg-[#2a2a2a] border-[#333] text-gray-300'
+                                        }">
+                                        <span class="text-xs font-bold">${block.label}</span>
+                                        <span class="text-[10px] font-mono text-gray-500 truncate w-full text-center">${block.value}</span>
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <input type="text" value="${val}" oninput="app.handleTextInput('${arg.key}', this.value)" placeholder="ブロックIDを直接入力..." class="w-full bg-[#151515] border border-[#444] p-3 rounded text-white focus:border-[#51cf38] outline-none" />
+                        </div>`;
+                        break;
+                    
+                    default:
+                        controlHtml = `<input type="text" value="${val}" oninput="app.handleTextInput('${arg.key}', this.value)" placeholder="${arg.placeholder || '入力してください...'}" class="w-full bg-[#151515] border border-[#444] p-4 rounded text-lg text-white focus:border-[#3C8527] outline-none" autofocus />`;
+                }
+
+                return `<div class="animate-fade-in">${optionalMsg}${controlHtml}</div>`;
+            }
+        };
+
+        app.init();
+    </script>
+</body>
+</html>
