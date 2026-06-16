@@ -4,21 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <!-- SEO対策 -->
     <title>マイクラ統合版コマンド生成ツール | 小学生にもおすすめ！Switch/スマホ対応</title>
     <meta name="description" content="小学生でもカンタン！Switchやスマホで使えるマインクラフト統合版（BE）のコマンド作成ツール。最強装備、モブ召喚、音、パーティクルなど、やりたいことがすぐに見つかります。">
     <meta name="keywords" content="マイクラ,コマンド,統合版,Switch,スイッチ,PE,BE,チート,一覧,ツール,生成,ID,小学生,子供向け,ウォーデン">
     
-    <!-- OGP (SNSシェア用) -->
     <meta property="og:title" content="マイクラ統合版コマンド生成ツール (Kids Edition)">
     <meta property="og:description" content="タップするだけでコマンドが作れる！ウォーデン召喚も最強装備もすぐ出せるよ。">
     <meta property="og:type" content="website">
     <meta property="og:image" content="https://placehold.co/1200x630/1e1e1e/3C8527?text=Minecraft+Command+Tool">
     <meta name="twitter:card" content="summary_large_image">
 
-    <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons (CDN) -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -37,10 +33,8 @@
 </head>
 <body class="selection:bg-[#3C8527] selection:text-white pb-32">
 
-    <!-- アプリケーション構造 -->
     <div id="app" class="max-w-3xl mx-auto">
         
-        <!-- Header -->
         <header class="bg-[#2a2a2a] border-b-4 border-[#151515] p-3 sticky top-0 z-50 shadow-lg mb-4">
             <nav class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -60,12 +54,17 @@
         </header>
 
         <main class="p-3 space-y-6">
-            <!-- Builder Section -->
             <section id="builder-area" class="min-h-[100px] transition-all duration-300">
-                <!-- JSでここにビルダーを描画 -->
-            </section>
+                </section>
 
-            <!-- Search & List Section -->
+            <a href="https://be.knowledge-notebook.com/" target="_blank" rel="noopener noreferrer" class="block bg-[#2a2a2a] border-2 border-[#3C8527] rounded-xl p-4 text-center transition-all hover:bg-[#2d3a2d] active:scale-[0.98] shadow-md">
+                <div class="flex items-center justify-center gap-2 mb-1">
+                    <i data-lucide="book-open" class="text-[#51cf38] w-5 h-5"></i>
+                    <span class="text-white font-bold text-base md:text-lg">マイクラ コマンドずかんを新しく作成しました！</span>
+                </div>
+                <span class="text-[#51cf38] text-sm font-bold">こっちもよろしくね 👉</span>
+            </a>
+
             <section class="space-y-4">
                 <div class="relative sticky top-[76px] z-40 shadow-lg bg-[#1e1e1e] pt-2 pb-1 rounded-b-lg">
                     <div class="relative mb-3">
@@ -80,13 +79,11 @@
                         />
                     </div>
                     <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-2 px-2" id="category-tabs">
-                        <!-- JSでタブを描画 -->
-                    </div>
+                        </div>
                 </div>
 
                 <div id="command-list" class="grid gap-3 pb-20">
-                    <!-- JSでリストを描画 -->
-                </div>
+                    </div>
             </section>
         </main>
     </div>
@@ -304,7 +301,7 @@
                 id: 'camera', name: '/camera', description: 'カメラを揺らしたりする', category: 'fun',
                 args: [
                     { key: 'target', label: 'だれの', type: 'selector' },
-                    { key: 'action', label: 'アクション', type: 'select', options: [{label: '揺らす(shake)', value: 'shake'}, {label: 'フェード(暗転)', value: 'fade'}, {label: '解除(clear)', value: 'clear'}] },
+                    { key: 'action', label: 'アクション', type: 'select', options: [{label: '揺らす(shake)', value: 'fade'}, {label: '解除(clear)', value: 'clear'}] },
                     { key: 'option', label: '設定', type: 'select', optional: true, options: [{label: '追加(add)', value: 'add'}] },
                     { key: 'intensity', label: '強さ/時間', type: 'text', optional: true, placeholder: '0.1 1.0' }
                 ]
@@ -728,7 +725,6 @@
 
                 container.innerHTML = `
                 <div class="bg-[#2a2a2a] border-2 border-[#585858] rounded-xl overflow-hidden shadow-xl ring-4 ring-[#151515] animate-fade-in">
-                    <!-- Toolbar -->
                     <div class="bg-[#353535] px-4 py-3 border-b border-[#585858] flex justify-between items-center">
                         <div class="flex items-center gap-2 overflow-hidden">
                             <span class="text-[#51cf38] font-bold font-mono text-lg">${cmd.name}</span>
@@ -739,7 +735,6 @@
                         </button>
                     </div>
 
-                    <!-- Preview -->
                     <div class="p-5 bg-[#151515] border-b border-[#333]">
                         <div class="font-mono text-xl break-all leading-relaxed">
                             <span class="text-[#51cf38] font-bold">${cmd.name}</span>
@@ -747,7 +742,6 @@
                         </div>
                     </div>
 
-                    <!-- Copy Button -->
                     <div class="px-5 py-3 bg-[#1a1a1a] flex justify-end border-b border-[#333]">
                         <button 
                             onclick="app.copyToClipboard()"
@@ -762,7 +756,6 @@
                         </button>
                     </div>
 
-                    <!-- Input Wizard -->
                     <div class="p-5 bg-[#222]">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-sm font-bold text-gray-300 uppercase flex items-center gap-2">
